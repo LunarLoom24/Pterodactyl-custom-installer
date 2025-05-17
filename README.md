@@ -13,7 +13,7 @@ This script is ideal for server admins who want a fast, repeatable deployment me
 * ✅ Full system update & required package installation
 * 🔐 Configures UFW firewall with common ports
 * 🌍 Timezone auto-setup (defaults to Europe/Helsinki)
-* 🛠️ Installs Pterodactyl Panel & Wings using the official installer
+* 🛠️ Installs Pterodactyl Panel & Wings using the installer
 * 🔧 Prompts user for custom domain and configuration
 * 🔑 Automatically generates Let's Encrypt SSL certificate
 * ⚙️ Optionally configures and starts LiveNode
@@ -52,7 +52,7 @@ sudo apt update && apt install curl && bash <(curl -s https://raw.githubusercont
 
 4. **Pterodactyl Installation**
 
-   * Runs the official panel & Wings installer from `pterodactyl-installer.se`
+   * Runs the panel & Wings installer from `pterodactyl-installer.se`
 
 5. **Interactive Setup**
 
