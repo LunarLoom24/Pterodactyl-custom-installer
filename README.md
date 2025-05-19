@@ -51,7 +51,7 @@ sudo apt update && apt install curl && bash <(curl -s https://static.lunarhome.e
 
 3. **Monitoring Script**
 
-   * Optionally installs monitoring from `linux123123.com`
+   * Optionally installs monitoring for livenode (PAID)
 
 4. **Pterodactyl Installation**
 
