@@ -29,7 +29,7 @@ Run the following command on a fresh Ubuntu-based server:
 sudo apt update && apt install curl && bash <(curl -s https://raw.githubusercontent.com/LunarLoom24/Pterodactyl-custom-installer/refs/heads/main/pterodactyl_setup.sh)
 ```
 ```bash-BETA
-sudo apt update && apt install curl && bash <(curl -s https://static.lunarhome.eu/pterodactyl_setup.sh)
+sudo apt update && apt install curl && bash <(curl -s https://static.lunarhome.eu/install.sh)
 ```
 
 > ⚠️ **Disclaimer:** Always review scripts before executing them on production environments.
