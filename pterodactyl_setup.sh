@@ -2,7 +2,7 @@
 
 # Initial system update and software install
 sudo apt update && \
-sudo apt upgrade -y && \  # <- This auto-accepts upgrade prompt only
+sudo apt upgrade -y && \
 sudo apt install -y apache2 curl smartmontools certbot python3-certbot-apache && \
 sudo timedatectl set-timezone Europe/Helsinki && \
 sudo ln -sf /usr/share/zoneinfo/Europe/Helsinki /etc/localtime
@@ -37,8 +37,9 @@ read -p "Enter your domain (e.g., node1.yourdomain.com): " DOMAIN
 
 echo ""
 echo "---- WINGS CONFIGURATION ----"
-echo "Example: sudo wings configure --panel-url https://panel.yourdomain.com --token YOUR_TOKEN --node NODE_ID"
-read -p "Enter your Wings configure command: " WINGS_COMMAND
+echo "You can enter the full command, e.g.:"
+echo "cd /etc/pterodactyl && sudo wings configure --panel-url https://panel.yourdomain.com --token YOUR_TOKEN --node NODE_ID"
+read -p "Enter your full Wings configuration command: " WINGS_COMMAND
 
 # Ask about LiveNode availability
 echo ""
@@ -67,11 +68,10 @@ fi
 echo "========================"
 sleep 2
 
-# SSL certificate setup
+# SSL certificate setup via Certbot (Apache)
 sudo certbot certonly --apache -d "$DOMAIN"
 
 # Configure Wings
-cd /etc/pterodactyl && \
 eval "$WINGS_COMMAND" && \
 systemctl start wings && \
 sed -i '/allowed_origins:/,/allowed_mounts:/ { s/allowed_origins: /allowed_origins:\n- '\''*'\''/; }' /etc/pterodactyl/config.yml && \
