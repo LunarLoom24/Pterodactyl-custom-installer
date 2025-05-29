@@ -2,7 +2,7 @@
 
 # Initial system update and software install
 sudo apt update && \
-sudo apt upgrade -y && \
+sudo apt upgrade -y && \  # <- This auto-accepts upgrade prompt only
 sudo apt install -y apache2 curl smartmontools certbot python3-certbot-apache && \
 sudo timedatectl set-timezone Europe/Helsinki && \
 sudo ln -sf /usr/share/zoneinfo/Europe/Helsinki /etc/localtime
