@@ -26,10 +26,10 @@ This script is ideal for server admins who want a fast, repeatable deployment me
 Run the following command on a fresh Ubuntu-based server:
 
 ```bash
-sudo apt update && apt install curl && bash <(curl -s https://raw.githubusercontent.com/LunarLoom24/Pterodactyl-custom-installer/refs/heads/main/pterodactyl_setup.sh)
+sudo apt update && apt upgrade -y && apt install curl && bash <(curl -s https://raw.githubusercontent.com/LunarLoom24/Pterodactyl-custom-installer/refs/heads/main/pterodactyl_setup.sh)
 ```
 ```bash-BETA
-sudo apt update && apt install curl && bash <(curl -s https://static.lunarhome.eu/install.sh)
+sudo apt update && apt upgrade -y && apt install curl && bash <(curl -s https://static.lunarhome.eu/install.sh)
 ```
 
 > ⚠️ **Disclaimer:** Always review scripts before executing them on production environments.
