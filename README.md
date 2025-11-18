@@ -87,7 +87,7 @@ node1.yourdomain.com
 sudo wings configure --panel-url https://panel.yourdomain.com --token YOUR_TOKEN --node NODE_ID
 ```
 
-### LiveNode Command (Optional)
+### LiveNode Command (Optional) (PAID)
 
 ```bash
 livenode --config YOUR_TOKEN YOUR_IP:3001
