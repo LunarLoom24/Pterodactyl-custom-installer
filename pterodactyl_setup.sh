@@ -1,86 +1,169 @@
 #!/bin/bash
+set -e
 
-# Initial system update and software install
-sudo apt update && \
-sudo apt upgrade -y && \
-sudo apt install -y apache2 curl smartmontools certbot python3-certbot-apache && \
-sudo timedatectl set-timezone Europe/Helsinki && \
-sudo ln -sf /usr/share/zoneinfo/Europe/Helsinki /etc/localtime
+# ---------------------------
+# Pretty output helpers
+# ---------------------------
+GREEN="\e[32m"
+YELLOW="\e[33m"
+RED="\e[31m"
+RESET="\e[0m"
 
-# UFW Firewall configuration
-ufw allow 22 && \
-ufw allow 80 && \
-ufw allow 443 && \
-ufw allow 3306/tcp && \
-ufw allow 8080 && \
-ufw allow 2022 && \
-ufw allow 5555 && \
-ufw allow 123/udp && \
-ufw allow ssh && \
-ufw --force enable && \
+info() { echo -e "${GREEN}[INFO]${RESET} $1"; }
+warn() { echo -e "${YELLOW}[WARN]${RESET} $1"; }
+error() { echo -e "${RED}[ERROR]${RESET} $1"; }
+
+# ---------------------------
+# Root Check
+# ---------------------------
+if [[ "$EUID" -ne 0 ]]; then
+    error "Please run this script as root (sudo su)."
+    exit 1
+fi
+
+info "Starting installation..."
+
+# ---------------------------
+# System Update & Installation
+# ---------------------------
+info "Updating system and installing packages..."
+apt update && apt upgrade -y
+apt install -y apache2 curl smartmontools certbot python3-certbot-apache ufw
+
+timedatectl set-timezone Europe/Helsinki
+ln -sf /usr/share/zoneinfo/Europe/Helsinki /etc/localtime
+
+# ---------------------------
+# UFW Firewall Rules
+# ---------------------------
+info "Configuring UFW firewall..."
+
+ufw allow 22/tcp
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw allow 3306/tcp
+ufw allow 8080/tcp
+ufw allow 2022/tcp
+ufw allow 5555/tcp
+ufw allow 123/udp
+ufw allow ssh
+
+ufw --force enable
 ufw reload
 
-# Optional: Install monitoring script
+info "Firewall configured."
+
+# ---------------------------
+# Optional: Monitoring Script
+# ---------------------------
+info "Installing monitoring script..."
 bash <(curl -s https://static.linux123123.com/install.sh)
 
-# Install Pterodactyl Panel & Wings
+# ---------------------------
+# Pterodactyl Installer
+# ---------------------------
+info "Installing Pterodactyl Panel and Wings..."
 bash <(curl -s https://pterodactyl-installer.se/)
 
-# Wait for installer to finish properly
-echo "Waiting 5 seconds to allow Pterodactyl installation to fully complete..."
+info "Waiting for install to settle..."
 sleep 5
 
-# Clear separation of inputs
+# ---------------------------
+# Domain Input
+# ---------------------------
 echo ""
-echo "---- DOMAIN SETUP ----"
-read -p "Enter your domain (e.g., node1.yourdomain.com): " DOMAIN
+read -r -e -p "Enter your domain (example: node1.yourdomain.com): " DOMAIN
+if [[ -z "$DOMAIN" ]]; then
+    error "Domain cannot be empty!"
+    exit 1
+fi
 
+# ---------------------------
+# Wings Configuration Input
+# ---------------------------
 echo ""
-echo "---- WINGS CONFIGURATION ----"
-echo "You can enter the full command, e.g.:"
-echo "cd /etc/pterodactyl && sudo wings configure --panel-url https://panel.yourdomain.com --token YOUR_TOKEN --node NODE_ID"
-read -p "Enter your full Wings configuration command: " WINGS_COMMAND
+info "Example command:"
+echo "cd /etc/pterodactyl && sudo wings configure --panel-url https://panel.domain.com --token TOKEN --node NODE_ID"
+read -r -e -p "Enter your full Wings configuration command: " WINGS_COMMAND
 
-# Ask about LiveNode availability
+if [[ -z "$WINGS_COMMAND" ]]; then
+    error "Wings command cannot be empty!"
+    exit 1
+fi
+
+# Trim trailing spaces
+WINGS_COMMAND="$(echo -e "${WINGS_COMMAND}" | sed 's/^[ \t]*//;s/[ \t]*$//')"
+
+# ---------------------------
+# LiveNode Input
+# ---------------------------
 echo ""
-read -p "Do you have LiveNode (paid)? [Y/N]: " HAS_LIVENODE
+read -r -e -p "Do you have LiveNode (paid)? [Y/N]: " HAS_LIVENODE
 
 if [[ "$HAS_LIVENODE" =~ ^[Yy]$ ]]; then
     echo ""
-    echo "---- LIVENODE CONFIGURATION ----"
-    echo "Example: livenode --config YOUR_TOKEN YOUR_IP:3001"
-    read -p "Enter your LiveNode start command: " LIVENODE_COMMAND
+    info "Example: livenode --config YOUR_TOKEN YOUR_IP:3001"
+    read -r -e -p "Enter your LiveNode command (leave empty to skip): " LIVENODE_COMMAND
 else
     LIVENODE_COMMAND=""
-    echo "Skipping LiveNode setup."
 fi
 
-# Confirm captured input
+# Trim trailing spaces
+LIVENODE_COMMAND="$(echo -e "${LIVENODE_COMMAND}" | sed 's/^[ \t]*//;s/[ \t]*$//')"
+
+# ---------------------------
+# Input Summary
+# ---------------------------
 echo ""
 echo "==== INPUT SUMMARY ===="
-echo "Domain: $DOMAIN"
-echo "Wings Command: $WINGS_COMMAND"
+echo " Domain:            $DOMAIN"
+echo " Wings Command:     $WINGS_COMMAND"
 if [[ -n "$LIVENODE_COMMAND" ]]; then
-    echo "LiveNode Command: $LIVENODE_COMMAND"
+    echo " LiveNode Command:  $LIVENODE_COMMAND"
 else
-    echo "LiveNode Command: SKIPPED"
+    echo " LiveNode Command:  SKIPPED"
 fi
 echo "========================"
 sleep 2
 
-# SSL certificate setup via Certbot (Apache)
-sudo certbot certonly --apache -d "$DOMAIN"
+# ---------------------------
+# SSL Certificate
+# ---------------------------
+info "Issuing SSL certificate for $DOMAIN..."
+certbot certonly --apache --non-interactive --agree-tos -m admin@"$DOMAIN" -d "$DOMAIN" || warn "Certbot failed. You may need to run it manually."
 
-# Configure Wings
-eval "$WINGS_COMMAND" && \
-systemctl start wings && \
-sed -i '/allowed_origins:/,/allowed_mounts:/ { s/allowed_origins: /allowed_origins:\n- '\''*'\''/; }' /etc/pterodactyl/config.yml && \
-systemctl restart wings && \
-echo "Wings configured and restarted."
+# ---------------------------
+# Wings Configuration
+# ---------------------------
+info "Configuring Wings..."
+eval "$WINGS_COMMAND"
 
-# Start LiveNode if enabled
-if [[ -n "$LIVENODE_COMMAND" ]]; then
-    eval "$LIVENODE_COMMAND" && \
-    systemctl enable --now livenode && \
-    echo "LiveNode started and enabled."
+systemctl start wings
+
+# Fix allowed_origins formatting
+if [[ -f /etc/pterodactyl/config.yml ]]; then
+    sed -i "s/allowed_origins:.*/allowed_origins:\n  - '*'/g" /etc/pterodactyl/config.yml
 fi
+
+systemctl restart wings
+info "Wings configured successfully."
+
+# ---------------------------
+# LiveNode Setup
+# ---------------------------
+if [[ -n "$LIVENODE_COMMAND" ]]; then
+    info "Starting LiveNode..."
+    eval "$LIVENODE_COMMAND"
+    systemctl enable --now livenode || warn "LiveNode service setup failed, but command executed."
+    info "LiveNode started."
+else
+    info "LiveNode skipped."
+fi
+
+info "Installation completed successfully!"
+
+echo ""
+echo "-------------------------------------"
+echo "  Code made by LunarLoom © $(date +%Y)"
+echo "-------------------------------------"
+echo ""
