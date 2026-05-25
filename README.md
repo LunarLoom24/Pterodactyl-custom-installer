@@ -14,6 +14,7 @@ This script is ideal for server admins who want a fast, repeatable deployment me
 * 🔐 Configures UFW firewall with common ports
 * 🌍 Timezone auto-setup (defaults to Europe/Helsinki)
 * 🛠️ Installs Pterodactyl Panel & Wings using the installer
+* 🔄 Automatic Wings update utility
 * 🔧 Prompts user for custom domain and configuration
 * 🔑 Automatically generates Let's Encrypt SSL certificate
 * ⚙️ Optionally configures and starts LiveNode
@@ -28,8 +29,17 @@ Run the following command on a fresh Ubuntu-based server:
 ```bash
 sudo apt update && apt upgrade -y && apt install curl && bash <(curl -s https://raw.githubusercontent.com/LunarLoom24/Pterodactyl-custom-installer/refs/heads/main/pterodactyl_setup.sh)
 ```
-```bash-BETA
+
+### BETA Installer
+
+```bash
 sudo apt update && apt upgrade -y && apt install curl && bash <(curl -s https://static.lunarhome.eu/install.sh)
+```
+
+### Wings Auto Update
+
+```bash
+sudo apt update && apt upgrade -y && apt install curl && curl -sSL https://static.lunarhome.eu/pterodactyl/wings-update.sh | bash
 ```
 
 > ⚠️ **Disclaimer:** Always review scripts before executing them on production environments.
@@ -71,13 +81,18 @@ sudo apt update && apt upgrade -y && apt install curl && bash <(curl -s https://
    * Runs the user-provided configuration commands
    * Starts and enables services
 
+8. **Wings Auto Update**
+
+   * Downloads and runs the automatic Wings updater script
+   * Ensures Wings stays updated with the latest fixes
+
 ---
 
 ## 💡 Example Inputs
 
 ### Domain
 
-```
+```text
 node1.yourdomain.com
 ```
 
@@ -128,7 +143,7 @@ Feel free to open suggestions or feature requests to make the script better!
 
 ## 🧠 Developer / Coder
 
-**LunarLoom24**
+**LunarLoom24**  
 GitHub: [@LunarLoom24](https://github.com/LunarLoom24)
 
 ---
