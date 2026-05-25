@@ -39,7 +39,7 @@ sudo apt update && apt upgrade -y && apt install curl && bash <(curl -s https://
 ### Wings Auto Update
 
 ```bash
-sudo apt update && apt upgrade -y && apt install curl && curl -sSL https://static.lunarhome.eu/pterodactyl/wings-update.sh | bash
+sudo apt update && apt upgrade -y && apt install curl && bash <(curl -s (https://static.lunarhome.eu/pterodactyl/wings-update.sh)
 ```
 
 > ⚠️ **Disclaimer:** Always review scripts before executing them on production environments.
