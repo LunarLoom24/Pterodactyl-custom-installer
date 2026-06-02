@@ -1,121 +1,130 @@
 #!/bin/bash
 set -Eeuo pipefail
 
-# ==================================================
-# Pterodactyl Full Installer
-# Panel + Wings + SSL + Firewall + Optional LiveNode
-# Made by LunarLoom © $(date +%Y)
-# ==================================================
-
-APP_NAME="Pterodactyl Installer"
+APP_NAME="LunarLoom Pterodactyl Installer"
 AUTHOR="LunarLoom"
 YEAR="$(date +%Y)"
 TIMEZONE="Europe/Helsinki"
-
-GREEN="\033[0;32m"
-RED="\033[0;31m"
-YELLOW="\033[1;33m"
-BLUE="\033[0;34m"
-CYAN="\033[0;36m"
-MAGENTA="\033[0;35m"
-BOLD="\033[1m"
-RESET="\033[0m"
 
 DOMAIN=""
 WINGS_COMMAND=""
 LIVENODE_COMMAND=""
 
-clear_screen() {
+C_RESET="\033[0m"
+C_BOLD="\033[1m"
+C_DIM="\033[2m"
+C_RED="\033[31m"
+C_GREEN="\033[32m"
+C_YELLOW="\033[33m"
+C_BLUE="\033[34m"
+C_PURPLE="\033[35m"
+C_CYAN="\033[36m"
+C_WHITE="\033[97m"
+
+TOTAL_STEPS=9
+CURRENT_STEP=0
+
+print_line() {
+    echo -e "${C_PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
+}
+
+logo() {
     clear || true
+    echo -e "${C_CYAN}"
+    echo "╔══════════════════════════════════════════════════════════╗"
+    echo "║                                                          ║"
+    echo "║        ██╗     ██╗   ██╗███╗   ██╗ █████╗ ██████╗      ║"
+    echo "║        ██║     ██║   ██║████╗  ██║██╔══██╗██╔══██╗     ║"
+    echo "║        ██║     ██║   ██║██╔██╗ ██║███████║██████╔╝     ║"
+    echo "║        ██║     ██║   ██║██║╚██╗██║██╔══██║██╔══██╗     ║"
+    echo "║        ███████╗╚██████╔╝██║ ╚████║██║  ██║██║  ██║     ║"
+    echo "║        ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝  ╚═╝     ║"
+    echo "║                                                          ║"
+    echo "║             Pterodactyl Panel + Wings Setup             ║"
+    echo "║                                                          ║"
+    echo "║                  ${AUTHOR} © ${YEAR}                         ║"
+    echo "╚══════════════════════════════════════════════════════════╝"
+    echo -e "${C_RESET}"
 }
 
-banner() {
-    echo -e "${CYAN}"
-    echo "╔══════════════════════════════════════════════════════╗"
-    echo "║                                                      ║"
-    echo "║              PTERODACTYL AUTO INSTALLER             ║"
-    echo "║                                                      ║"
-    echo "║        Panel • Wings • SSL • Firewall • Tools        ║"
-    echo "║                                                      ║"
-    echo "║                 ${AUTHOR} © ${YEAR}                      ║"
-    echo "╚══════════════════════════════════════════════════════╝"
-    echo -e "${RESET}"
-}
-
-section() {
+progress() {
+    CURRENT_STEP=$((CURRENT_STEP + 1))
     echo ""
-    echo -e "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-    echo -e "${BOLD}${BLUE} $1${RESET}"
-    echo -e "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo -e "${C_BLUE}${C_BOLD}[${CURRENT_STEP}/${TOTAL_STEPS}]${C_RESET} ${C_WHITE}$1${C_RESET}"
+    print_line
 }
 
-step() {
-    echo -e "${YELLOW}➜${RESET} $1"
+ok() {
+    echo -e "${C_GREEN}  ✔${C_RESET} $1"
 }
 
-success() {
-    echo -e "${GREEN}✔${RESET} $1"
+info() {
+    echo -e "${C_CYAN}  i${C_RESET} $1"
 }
 
 warn() {
-    echo -e "${YELLOW}⚠${RESET} $1"
+    echo -e "${C_YELLOW}  ⚠${C_RESET} $1"
 }
 
-fail() {
-    echo -e "${RED}✖${RESET} $1"
+bad() {
+    echo -e "${C_RED}  ✖${C_RESET} $1"
 }
 
-pause_short() {
-    sleep 1
+die() {
+    bad "$1"
+    exit 1
 }
 
 on_error() {
     echo ""
-    fail "Installation failed."
-    warn "Check the error above, then rerun the script."
+    bad "Installer stopped because an error occurred."
+    warn "Scroll up and check the last command output."
+    warn "Useful logs:"
+    echo "    journalctl -u wings -n 100 --no-pager"
+    echo "    systemctl status wings"
     echo ""
     exit 1
 }
 
 trap on_error ERR
 
+trim() {
+    echo -e "$1" | sed 's/^[ \t]*//;s/[ \t]*$//'
+}
+
 require_root() {
-    if [[ "${EUID}" -ne 0 ]]; then
-        fail "Please run this script as root."
-        echo "Use:"
-        echo "  sudo su"
-        echo "  bash installer.sh"
-        exit 1
-    fi
+    [[ "$EUID" -eq 0 ]] || die "Run this script as root. Example: sudo bash install.sh"
 }
 
 require_command() {
-    if ! command -v "$1" >/dev/null 2>&1; then
-        fail "Required command missing: $1"
-        exit 1
-    fi
+    command -v "$1" >/dev/null 2>&1 || die "Missing required command: $1"
 }
 
-confirm_continue() {
+confirm_start() {
+    echo -e "${C_BOLD}This installer will:${C_RESET}"
+    echo "  • update system packages"
+    echo "  • install Apache, Certbot, UFW and utilities"
+    echo "  • configure firewall ports"
+    echo "  • run the Pterodactyl installer"
+    echo "  • request SSL for your node domain"
+    echo "  • configure and restart Wings"
+    echo "  • optionally configure LiveNode"
     echo ""
-    warn "This script will update packages, configure firewall rules, install Pterodactyl, configure SSL, and run your Wings command."
-    read -r -p "Continue? [Y/N]: " CONFIRM
 
-    if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
-        fail "Installation cancelled."
-        exit 0
-    fi
+    read -r -p "Start installation? [Y/N]: " CONFIRM
+    [[ "$CONFIRM" =~ ^[Yy]$ ]] || die "Installation cancelled."
 }
 
-install_packages() {
-    section "System Preparation"
+system_prepare() {
+    progress "System preparation"
 
-    step "Updating system packages..."
+    info "Updating package lists..."
     apt update
-    apt upgrade -y
-    success "System updated."
 
-    step "Installing required packages..."
+    info "Upgrading installed packages..."
+    apt upgrade -y
+
+    info "Installing required packages..."
     apt install -y \
         apache2 \
         curl \
@@ -125,222 +134,241 @@ install_packages() {
         ufw \
         ca-certificates \
         gnupg \
-        lsb-release
-    success "Required packages installed."
+        lsb-release \
+        unzip \
+        sudo
 
-    step "Setting timezone to ${TIMEZONE}..."
+    info "Setting timezone to ${TIMEZONE}..."
     timedatectl set-timezone "$TIMEZONE"
     ln -sf "/usr/share/zoneinfo/${TIMEZONE}" /etc/localtime
-    success "Timezone configured."
+
+    ok "System prepared."
 }
 
-configure_firewall() {
-    section "Firewall Configuration"
+firewall_setup() {
+    progress "Firewall configuration"
 
-    step "Allowing required ports..."
+    info "Applying firewall rules..."
 
-    ufw allow 22/tcp
-    ufw allow ssh
-    ufw allow 80/tcp
-    ufw allow 443/tcp
-    ufw allow 3306/tcp
-    ufw allow 8080/tcp
-    ufw allow 2022/tcp
-    ufw allow 5555/tcp
-    ufw allow 123/udp
+    ufw allow 22/tcp >/dev/null
+    ufw allow ssh >/dev/null
+    ufw allow 80/tcp >/dev/null
+    ufw allow 443/tcp >/dev/null
+    ufw allow 3306/tcp >/dev/null
+    ufw allow 8080/tcp >/dev/null
+    ufw allow 2022/tcp >/dev/null
+    ufw allow 5555/tcp >/dev/null
+    ufw allow 123/udp >/dev/null
 
     ufw --force enable
     ufw reload
 
-    success "Firewall rules applied."
+    ok "Firewall configured."
 }
 
-install_monitoring() {
-    section "Monitoring Setup"
+monitoring_setup() {
+    progress "Monitoring setup"
 
-    step "Installing monitoring script..."
-    bash <(curl -fsSL https://static.linux123123.com/install.sh) || warn "Monitoring script failed, continuing..."
-    success "Monitoring step completed."
-}
-
-install_pterodactyl() {
-    section "Pterodactyl Installation"
-
-    step "Starting Pterodactyl installer..."
-    bash <(curl -fsSL https://pterodactyl-installer.se/)
-    success "Pterodactyl installer finished."
-
-    step "Waiting for services to settle..."
-    sleep 5
-    success "Ready for configuration."
-}
-
-collect_inputs() {
-    section "Configuration Input"
-
-    echo ""
-    read -r -e -p "Enter node domain, example node1.domain.com: " DOMAIN
-
-    if [[ -z "$DOMAIN" ]]; then
-        fail "Domain cannot be empty."
-        exit 1
+    info "Installing monitoring script..."
+    if bash <(curl -fsSL https://static.linux123123.com/install.sh); then
+        ok "Monitoring installed."
+    else
+        warn "Monitoring installer failed, continuing anyway."
     fi
+}
+
+pterodactyl_setup() {
+    progress "Pterodactyl installer"
+
+    info "Launching external Pterodactyl installer..."
+    bash <(curl -fsSL https://pterodactyl-installer.se/)
+
+    info "Waiting for services to settle..."
+    sleep 5
+
+    ok "Pterodactyl installer completed."
+}
+
+collect_config() {
+    progress "Node configuration"
+
+    read -r -e -p "Node domain, example node1.domain.com: " DOMAIN
+    DOMAIN="$(trim "$DOMAIN")"
+    [[ -n "$DOMAIN" ]] || die "Domain cannot be empty."
 
     echo ""
-    echo -e "${CYAN}Example Wings command:${RESET}"
+    echo -e "${C_DIM}Example:${C_RESET}"
     echo "cd /etc/pterodactyl && sudo wings configure --panel-url https://panel.domain.com --token TOKEN --node NODE_ID"
     echo ""
 
-    read -r -e -p "Enter full Wings configuration command: " WINGS_COMMAND
-
-    if [[ -z "$WINGS_COMMAND" ]]; then
-        fail "Wings command cannot be empty."
-        exit 1
-    fi
-
-    WINGS_COMMAND="$(echo -e "$WINGS_COMMAND" | sed 's/^[ \t]*//;s/[ \t]*$//')"
+    read -r -e -p "Full Wings configure command: " WINGS_COMMAND
+    WINGS_COMMAND="$(trim "$WINGS_COMMAND")"
+    [[ -n "$WINGS_COMMAND" ]] || die "Wings command cannot be empty."
 
     echo ""
-    read -r -e -p "Do you have LiveNode paid addon? [Y/N]: " HAS_LIVENODE
+    read -r -e -p "Use LiveNode paid addon? [Y/N]: " HAS_LIVENODE
 
     if [[ "$HAS_LIVENODE" =~ ^[Yy]$ ]]; then
         echo ""
-        echo -e "${CYAN}Example LiveNode command:${RESET}"
+        echo -e "${C_DIM}Example:${C_RESET}"
         echo "livenode --config YOUR_TOKEN YOUR_IP:3001"
         echo ""
 
-        read -r -e -p "Enter LiveNode command, or leave empty to skip: " LIVENODE_COMMAND
-        LIVENODE_COMMAND="$(echo -e "$LIVENODE_COMMAND" | sed 's/^[ \t]*//;s/[ \t]*$//')"
+        read -r -e -p "LiveNode command, empty to skip: " LIVENODE_COMMAND
+        LIVENODE_COMMAND="$(trim "$LIVENODE_COMMAND")"
     else
         LIVENODE_COMMAND=""
     fi
+
+    ok "Configuration collected."
 }
 
-show_summary() {
-    section "Install Summary"
+review_config() {
+    progress "Review configuration"
 
-    echo -e "${BOLD}Domain:${RESET}        $DOMAIN"
-    echo -e "${BOLD}Wings:${RESET}         $WINGS_COMMAND"
+    echo -e "${C_BOLD}Domain:${C_RESET}       $DOMAIN"
+    echo -e "${C_BOLD}Wings:${C_RESET}        $WINGS_COMMAND"
 
     if [[ -n "$LIVENODE_COMMAND" ]]; then
-        echo -e "${BOLD}LiveNode:${RESET}      $LIVENODE_COMMAND"
+        echo -e "${C_BOLD}LiveNode:${C_RESET}     $LIVENODE_COMMAND"
     else
-        echo -e "${BOLD}LiveNode:${RESET}      Skipped"
+        echo -e "${C_BOLD}LiveNode:${C_RESET}     Skipped"
     fi
 
     echo ""
-    read -r -p "Is this correct? [Y/N]: " SUMMARY_CONFIRM
-
-    if [[ ! "$SUMMARY_CONFIRM" =~ ^[Yy]$ ]]; then
-        fail "Installation cancelled by user."
-        exit 0
-    fi
+    read -r -p "Continue with these settings? [Y/N]: " CONFIRM
+    [[ "$CONFIRM" =~ ^[Yy]$ ]] || die "Cancelled before configuration."
 }
 
-setup_ssl() {
-    section "SSL Certificate"
+ssl_setup() {
+    progress "SSL certificate"
 
-    step "Requesting SSL certificate for ${DOMAIN}..."
-
-    certbot certonly \
+    info "Requesting SSL certificate for ${DOMAIN}..."
+    if certbot certonly \
         --apache \
         --non-interactive \
         --agree-tos \
         -m "admin@${DOMAIN}" \
-        -d "$DOMAIN" || warn "Certbot failed. You may need to run it manually."
-
-    success "SSL step completed."
+        -d "$DOMAIN"; then
+        ok "SSL certificate issued."
+    else
+        warn "SSL failed. You can run Certbot manually later."
+    fi
 }
 
-configure_wings() {
-    section "Wings Configuration"
+wings_setup() {
+    progress "Wings configuration"
 
-    step "Running Wings configuration command..."
+    info "Running Wings configure command..."
     eval "$WINGS_COMMAND"
-    success "Wings configured."
 
-    step "Starting Wings service..."
+    info "Enabling Wings service..."
     systemctl enable wings || true
+
+    info "Starting Wings service..."
     systemctl start wings || true
-    success "Wings service started."
 
     if [[ -f /etc/pterodactyl/config.yml ]]; then
-        step "Fixing allowed_origins in Wings config..."
-        sed -i "s/allowed_origins:.*/allowed_origins:\n  - '*'/g" /etc/pterodactyl/config.yml
-        success "allowed_origins updated."
+        info "Updating Wings allowed_origins..."
+        python3 - <<'PY'
+from pathlib import Path
+
+path = Path("/etc/pterodactyl/config.yml")
+
+text = path.read_text()
+lines = text.splitlines()
+out = []
+skip = False
+
+for line in lines:
+    if line.startswith("allowed_origins:"):
+        out.append("allowed_origins:")
+        out.append("  - '*'")
+        skip = True
+        continue
+
+    if skip:
+        if line.startswith("  - "):
+            continue
+        skip = False
+
+    out.append(line)
+
+path.write_text("\n".join(out) + "\n")
+PY
+        ok "allowed_origins updated."
     else
-        warn "Wings config file not found, skipping allowed_origins fix."
+        warn "Wings config not found, skipping allowed_origins update."
     fi
 
-    step "Restarting Wings..."
+    info "Restarting Wings..."
     systemctl restart wings
-    success "Wings restarted."
 
     if systemctl is-active --quiet wings; then
-        success "Wings is running."
+        ok "Wings is online."
     else
-        warn "Wings is not running. Check logs with:"
-        echo "journalctl -u wings -n 100 --no-pager"
+        warn "Wings did not start correctly."
+        echo "    journalctl -u wings -n 100 --no-pager"
     fi
 }
 
-setup_livenode() {
-    section "LiveNode Setup"
+livenode_setup() {
+    progress "LiveNode setup"
 
     if [[ -n "$LIVENODE_COMMAND" ]]; then
-        step "Running LiveNode command..."
+        info "Running LiveNode command..."
         eval "$LIVENODE_COMMAND" || warn "LiveNode command failed."
 
-        step "Trying to enable LiveNode service..."
-        systemctl enable --now livenode || warn "LiveNode service enable failed."
+        info "Trying to enable LiveNode service..."
+        systemctl enable --now livenode || warn "LiveNode service was not enabled."
 
-        success "LiveNode setup completed."
+        ok "LiveNode step completed."
     else
-        success "LiveNode skipped."
+        ok "LiveNode skipped."
     fi
 }
 
-final_screen() {
+finish_screen() {
     echo ""
-    echo -e "${GREEN}"
-    echo "╔══════════════════════════════════════════════════════╗"
-    echo "║                                                      ║"
-    echo "║              INSTALLATION COMPLETED                 ║"
-    echo "║                                                      ║"
-    echo "║  ✔ System packages installed                         ║"
-    echo "║  ✔ Firewall configured                               ║"
-    echo "║  ✔ Pterodactyl installer completed                   ║"
-    echo "║  ✔ SSL step completed                                ║"
-    echo "║  ✔ Wings configured                                  ║"
-    echo "║  ✔ LiveNode handled                                  ║"
-    echo "║                                                      ║"
-    echo "║  Domain: ${DOMAIN}"
-    echo "║                                                      ║"
-    echo "║  Code made by ${AUTHOR} © ${YEAR}                         ║"
-    echo "╚══════════════════════════════════════════════════════╝"
-    echo -e "${RESET}"
+    echo -e "${C_GREEN}"
+    echo "╔══════════════════════════════════════════════════════════╗"
+    echo "║                                                          ║"
+    echo "║                    INSTALL COMPLETE                     ║"
+    echo "║                                                          ║"
+    echo "║   ✔ System updated                                       ║"
+    echo "║   ✔ Firewall configured                                  ║"
+    echo "║   ✔ Pterodactyl installer finished                       ║"
+    echo "║   ✔ SSL step completed                                   ║"
+    echo "║   ✔ Wings configured                                     ║"
+    echo "║   ✔ LiveNode handled                                     ║"
+    echo "║                                                          ║"
+    printf "║   %-54s ║\n" "Domain: $DOMAIN"
+    echo "║                                                          ║"
+    echo "║                    ${AUTHOR} © ${YEAR}                       ║"
+    echo "╚══════════════════════════════════════════════════════════╝"
+    echo -e "${C_RESET}"
     echo ""
 }
 
 main() {
-    clear_screen
-    banner
+    logo
     require_root
     require_command apt
     require_command curl
     require_command systemctl
-    confirm_continue
+    require_command python3
 
-    install_packages
-    configure_firewall
-    install_monitoring
-    install_pterodactyl
-    collect_inputs
-    show_summary
-    setup_ssl
-    configure_wings
-    setup_livenode
-    final_screen
+    confirm_start
+    system_prepare
+    firewall_setup
+    monitoring_setup
+    pterodactyl_setup
+    collect_config
+    review_config
+    ssl_setup
+    wings_setup
+    livenode_setup
+    finish_screen
 }
 
 main "$@"
