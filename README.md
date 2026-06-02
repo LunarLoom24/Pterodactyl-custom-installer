@@ -33,7 +33,7 @@ sudo apt update && apt upgrade -y && apt install curl && bash <(curl -s https://
 ### BETA Installer
 
 ```bash
-sudo apt update && apt upgrade -y && apt install curl && bash <(curl -s https://static.lunarhome.eu/install.sh)
+sudo apt update && apt upgrade -y && apt install curl && bash <(curl -s https://static.lunarhome.eu/pterodactyl/install.sh)
 ```
 
 ### Wings Auto Update
